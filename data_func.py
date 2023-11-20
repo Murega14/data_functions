@@ -7,6 +7,7 @@ import chardet
 import tabula
 import geocoder
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, roc_auc_score, mean_absolute_error, mean_squared_error, classification_report
+from sklearn.metrics import davies_bouldin_score, silhouette_score, calinski_harabasz_score
 
 
 def load_data(file_path, encoding=None, file_types=None):
@@ -521,7 +522,7 @@ def evaluate_model(y_true, y_pred, model_type=None):
         >>> metrics = evaluate_model(true_values, predicted_values, model_type='regression)
 
         # Evaluate a classification model
-        >>>> metrics = evaluate_model(true_values, predicted_values, model_type='regression)
+        >>>> metrics = evaluate_model(true_values, predicted_values, model_type='classification')
 
         $ Evaluate a model without specifying the model type
         >>> metrics = evaluate_model(true_values, predicted_values)
@@ -530,7 +531,7 @@ def evaluate_model(y_true, y_pred, model_type=None):
         >>> metrics = evaluate_model(true_values, predicted_values, model_type='clustering)
 
         # Evaluate an anomaly model
-        >>> metrics = evaluate_model(true_values, predicted_values)
+        >>> metrics = evaluate_model(true_values, predicted_values, model_type='anomaly')
     """
 
     metrics = {}
@@ -551,5 +552,20 @@ def evaluate_model(y_true, y_pred, model_type=None):
         metrics['f1-score'] = f1_score(y_true, y_pred)
         metrics['MAE'] = mean_absolute_error(y_true, y_pred)
         metrics['MSE'] = mean_squared_error(y_true, y_pred)
+    
+    elif model_type == 'clustering':
+        metrics['silhouette'] = silhouette_score(y_true, y_pred)
+        metrics['davies-bouldin'] = davies_bouldin_score(y_true, y_pred)
+        metrics[' calinski_harabasz_score'] = calinski_harabasz_score(y_true, y_pred)
+
+    elif model_type == 'anomaly':
+        y_pred = np.array(y_pred) >= 0.5
+        metrics['AUC'] = roc_auc_score(y_true, y_pred)
+        metrics['precision'] = precision_score(y_true, y_pred)
+        metrics['recall'] = recall_score(y_true, y_pred)
+        metrics['f1-score'] = f1_score(y_true, y_pred)
+
+    else:
+        print("Invalid model type provided. Please specify 'regression', 'classification', 'clustering', or 'anomaly'")
 
     return metrics
