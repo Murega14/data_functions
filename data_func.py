@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 import chardet
+import tabula
+import geocoder
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, roc_auc_score, mean_absolute_error, mean_squared_error, classification_report
 
 
@@ -121,6 +123,35 @@ def load_data(file_path, encoding=None, file_types=None):
     elif os.path.splitext(file_path)[1] == '.xls':
         df = pd.read_excel(file_path, encoding=encoding)
 
+def convert_pdf_to_csv(pdf_file, csv_file, password=None):
+    """
+    Converts a PDF file into a CSV file.
+
+    Args:
+        pdf_file (str): path to the input PDF  file
+        csv_file (str): path to save the output CSV file
+        password (str): Password for the PDF file if its encrypted. Defaults to None
+    
+    Returns:
+        None.
+
+    This function extracts tables from a PDF file using tabula and saves the extracted tables as CSV files.
+    """
+    try:
+        if password:
+            tables = tabula.read_pdf(pdf_file, output_format="csv", password=password)
+        else:
+            tables = tabula.read_pdf(pdf_file, output_format="csv")
+
+        # concatenating all extracted tables into one dataframe
+        df = pd.concat(tables)
+
+        df.to_csv(csv_file, index=False)
+
+        print(f"Table saved to {csv_file}")
+
+    except Exception as e:
+        print(f"Error converting PDF to CSV: {e}")  
 
 def check_duplicates(df):
     """
@@ -296,7 +327,115 @@ def convert_to_datetime(df, column):
     """
     df[column] = pd.to_datetime(df[column], errors='coerce')
     return df
+
+def extract_date_month(df, columns):
+    """
+    Extracts date and month from specified columns in a Dataframe
+
+    Args:
+        df (pandas.Datframe): The Dataframe containing the columns to extract date and month
+        columns (str or list): The name(s) of the columns to extract date and month from
+
+    Returns:
+        pandas.DataFrame: The Dataframe with the extracted date and month columns
+
+    This function extracts the date and month from the specified columns in the Dataframe.
+    It uses the pandas.to_datetime() function to convert the columns to datetime format.
+    It then extracts the date and month from the datetime objects using the pandas.DatetimeIndex.date and pandas.DatetimeIndex.month attributes.
+    The extracted date and month columns are added to the Dataframe as new columns.
+
+    Examples:
+        #extract date and month from 'date_column'
+        >>> df_with_date_month = extract_date_month(df, 'date_column')
+
+        #extract date and month from multiple columns
+        >>> df_with_date_month = extract_date_month(df, ['date_column_1', 'date_column_2'])
+    """
+    if isinstance(columns, str):
+        columns = [columns]
+
+    for col in columns:
+        if df[col].dtype != 'datetime64[ns]':
+            df[col] = pd.to_datetime(df[col], errors='coerce')
+        df[f'{col}_Date_Month'] = df[col].dt.strftime('%d-%m')
+
+    return df
    
+def extract_day_name(df, columns):
+    """
+    Extracts day name from specified columns in a Dataframe
+
+    Args:
+        df (pandas.Datframe): The Dataframe containing the columns to extract day name
+        columns (str or list): The name(s) of the columns to extract day name from
+
+    Returns:
+        pandas.DataFrame: The Dataframe with the extracted day name columns
+
+    This function extracts the day name from the specified columns in the Dataframe.
+    It uses the pandas.to_datetime() function to convert the columns to datetime format.
+    It then extracts the day name from the datetime objects using the pandas.DatetimeIndex.day_name attribute.
+    The extracted day name columns are added to the Dataframe as new columns.
+
+    Examples:
+        #extract day name from 'date_column'
+        >>> df_with_day_name = extract_day_name(df, 'date_column')
+
+        #extract day name from multiple columns
+        >>> df_with_day_name = extract_day_name(df, ['date_column_1', 'date_column_2'])
+    """
+    if isinstance(columns, str):
+        columns = [columns]
+
+    for col in columns:
+        if df[col].dtype != 'datetime64[ns]':
+            df[col] = pd.to_datetime(df[col], errors='coerce')
+        df[f'{col}_Day_Name'] = df[col].dt.day_name()
+
+    return df
+
+def add_longitude_latitude(df, column):
+    """
+    Adds longitude and latitude columns to a DataFrame
+
+    Args:
+        df (pandas.DataFrame): The DataFrame to add the longitude and latitude columns to
+        column (str): The name of the column to add the longitude and latitude columns from
+
+    Returns:
+        pandas.DataFrame: The DataFrame with the added longitude and latitude columns
+
+    This function adds two new columns to the DataFrame: 'Longitude' and 'Latitude'.
+    The 'Longitude' column contains the longitude value extracted from the 'column' column.
+    The 'Latitude' column contains the latitude value extracted from the 'column' column.
+
+    Examples:
+        #add longitude and latitude columns to 'column_name' column
+        >>> df_with_longitude_latitude = add_longitude_latitude(df, 'column_name')
+    """
+   #initializing the geocoder object
+    geolocator = geocoder.Nominatim(user_agent="my_app")
+    df['longitude'] = []
+    df['latitude'] = []
+
+    for index, row in df.iterrows():
+        state_name = row[column]
+        location = geolocator.geocode(state_name)
+
+        if location:
+            longitude = location.longitude
+            latitude = location.latitude
+        else:
+            longitude = None
+            latitude = None
+
+        df.loc[index, 'longitude'] = longitude
+        df.loc[index, 'latitude'] = latitude
+
+    return df
+
+
+
 
 def plot_distribution(df, column, figure_size=(12, 8), title=None, xlabel=None):
     """
@@ -324,6 +463,38 @@ def plot_distribution(df, column, figure_size=(12, 8), title=None, xlabel=None):
     plt.title(title if title else f'Distribution of {column}')
     plt.show()
 
+def plot_bar(df, x, y, figure_size=(12, 8), title=None, xlabel=None, ylabel=None):
+    """
+    Plots a bar chart from two columns in a dataframe.
+    Args:
+        df (pandas.DataFrame): The dataframe to plot the bar chart from.
+        x (str): The name of the column to use as the x-axis data.
+        y (str): The name of the column to use as the y-axis data.
+        figure_size (tuple, optional): Size of the figure (width, height). Defaults to (12, 8).
+        title (str, optional): Title for the plot. Defaults to None.
+
+    Returns:
+        None.
+    Raises:
+        None.
+    Examples:
+        >>> plot_bar(df, 'x_column', 'y_column')
+        Plots a bar chart from the 'x_column' column in the dataframe 'df' and the 'y_column' column.
+        >>> plot_bar(df, 'x_column', 'y_column', 'figure_size')
+        Plots a bar chart from the 'x_column' column in the dataframe 'df' and the 'y_column' column with the figure size 'figure_size'.
+        >>> plot_bar(df, 'x_column', 'y_column', 'figure_size', 'title')
+
+    """
+    plt.figure(figsize=(figure_size))
+    ax = sns.barplot(x=x, y=y, data=df)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    plt.grid(False)
+    plt.xticks(rotation=0)
+    plt.xlabel(xlabel if xlabel else x)
+    plt.ylabel(ylabel if ylabel else y)
+    plt.title(title if title else f'Bar Chart of {x} vs {y}')
+    plt.show()
 
 def evaluate_model(y_true, y_pred, model_type=None):
     """

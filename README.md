@@ -47,4 +47,4 @@ If you encounter any issues or have ideas for enhancements, please open an issue
 
 ## License
 
-This repository is licensed under the MIT License.
+This repository is licensed under the MIT License
