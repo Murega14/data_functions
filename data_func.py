@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 import chardet
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, roc_auc_score, mean_absolute_error, mean_squared_error, classification_report
+
 
 def load_data(file_path, encoding=None, file_types=None):
     """
@@ -214,6 +216,64 @@ def replace_missing_categorical(df, strategy='mode'):
 
     return df
 
+def convert_to_numeric(df, columns):
+    """
+    Converts one or multiple columns in a Dataframe to a numeric format
+
+    Args:
+        df (pandas.DataFrame): The DataFrame containing the column to convert.
+        columns (str or list): The name(s) of the column(s) to convert.
+
+    Returns:
+        pandas.DataFrame: The DataFrame with the converted column(s).
+
+    This function converts the specified column in the DataFrame to numeric format.
+    It uses the pandas.to_numeric() function to convert the column to numeric format.
+    If the column is already in numeric format, it is returned unchanged.
+
+    Examples:
+        #convert 'column_name' to numeric format
+        >>> df_with_numeric = convert_to_numeric(df, 'column_name')
+
+        #convert multiple columns to numeric format
+        >>> df_with_numeric = convert_to_numeric(df, ['column_1', 'column_2'])
+    
+    """
+    if isinstance(columns, str):
+        columns = [columns]
+
+    for col in columns:
+        df[col] = pd.to_numeric(df[col], errors='coerce')
+    
+    return df
+
+def convert_to_boolean(df, columns):
+    """
+    Converts one or multiple columns in a DataFrame to a boolean format.
+
+    Args:
+        df (pandas.DataFrame): The DataFrame containing the column to convert.
+        columns (str or list): The name(s) of the column(s) to convert.
+
+    Returns:
+        pandas.DataFrame: The DataFrame with the converted column(s).
+
+    This function converts the specified column in the DataFrame to boolean format.
+    It uses the pandas.to_numeric() function to convert the column to boolean format.
+    If the column is already in boolean format, it is returned unchanged.
+
+    Examples:
+        #convert 'column_name' to boolean format
+        >>> df_with_boolean = convert_to_boolean(df, 'column_name')
+
+        #convert multiple columns to boolean format
+        >>> df_with_boolean = convert_to_boolean(df, ['column_1', 'column_2'])
+    """
+    if isinstance(columns, str):
+        columns = [columns]
+
+    df[columns] = pd.to_numeric(df[columns], errors='coerce')
+    df[columns] = df[columns].astype(bool)
 
 def convert_to_datetime(df, column):
     """
@@ -263,3 +323,62 @@ def plot_distribution(df, column, figure_size=(12, 8), title=None, xlabel=None):
     plt.grid(False)
     plt.title(title if title else f'Distribution of {column}')
     plt.show()
+
+
+def evaluate_model(y_true, y_pred, model_type=None):
+    """
+    Evaluate's a model's performance based on predicted and true values
+
+    Args:
+        y_true (array-like): The true values
+        y_pred (array-like): The predicted values
+        model_type (str): The type of model. Options are: 'regression', 'classification', 'clustering', 'anomaly'.
+
+    Returns:
+        dict: A dictionary containing the evaluation metrics.
+
+    This function evaluates the performance of a model based on predicted and true values.
+    It returns a dictionary containing the evaluation metrics.
+    The evaluation metrics depend on the type of model.
+    For regression models, the metrics include 'MAE', 'MSE', 'RMSE', 'R2', 'RMSLE', 'MAPE'.
+    For classification models, the metrics include 'accuracy', 'precision', 'recall', 'f1-score', 'roc-auc'.
+    For clustering models, the metrics include 'silhouette-score', 'davies-bouldin-index'.
+    For anomaly models, the metrics include 'AUC', 'precision', 'recall', 'f1-score'.
+
+    Examples:
+        # Evaluate regression model
+        >>> metrics = evaluate_model(true_values, predicted_values, model_type='regression)
+
+        # Evaluate a classification model
+        >>>> metrics = evaluate_model(true_values, predicted_values, model_type='regression)
+
+        $ Evaluate a model without specifying the model type
+        >>> metrics = evaluate_model(true_values, predicted_values)
+
+        # Evaluate a clustering model
+        >>> metrics = evaluate_model(true_values, predicted_values, model_type='clustering)
+
+        # Evaluate an anomaly model
+        >>> metrics = evaluate_model(true_values, predicted_values)
+    """
+
+    metrics = {}
+
+    if model_type == 'classification':
+        metrics['accuracy'] = accuracy_score(y_true, y_pred)
+        metrics['precision'] = precision_score(y_true, y_pred)
+        metrics['recall'] = recall_score(y_true, y_pred)
+        metrics['f1-score'] = f1_score(y_true, y_pred)
+        metrics['roc-auc'] = roc_auc_score(y_true, y_pred)
+        metrics['confusion-matrix'] = confusion_matrix(y_true, y_pred)
+        metrics['classification-report'] = classification_report(y_true, y_pred)
+
+    elif model_type == 'regression':
+        metrics['accuracy'] = accuracy_score(y_true, y_pred)
+        metrics['precision'] = precision_score(y_true, y_pred)
+        metrics['recall'] = recall_score(y_true, y_pred)
+        metrics['f1-score'] = f1_score(y_true, y_pred)
+        metrics['MAE'] = mean_absolute_error(y_true, y_pred)
+        metrics['MSE'] = mean_squared_error(y_true, y_pred)
+
+    return metrics
