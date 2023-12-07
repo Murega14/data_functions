@@ -3,6 +3,7 @@ import numpy as np
 import seaborn as sns
 import geocoder
 import output as out
+import os
 
 
 def test_load_data():
